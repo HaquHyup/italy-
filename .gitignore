@@ -1,0 +1,12 @@
+.next
+node_modules
+.vercel
+.vercel-cache
+out
+dist
+*.log
+.env
+.env.local
+.env.*.local
+Thumbs.db
+Desktop.ini
