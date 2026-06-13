@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CalendarDays,
@@ -10,15 +10,134 @@ import {
   Compass,
   Check,
   Copy,
+  Delete,
   ExternalLink,
   FileText,
   Hotel,
+  Lock,
   MapPin,
   Plane,
   TrainFront,
   Utensils
 } from "lucide-react";
 import { openItems, packingList, tripDays, urgentNotes } from "@/data/itinerary";
+
+const CORRECT_PIN = "8888";
+const SESSION_KEY = "italy_unlocked";
+
+function PasswordGate({ children }: { children: React.ReactNode }) {
+  const [unlocked, setUnlocked] = useState(false);
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState(false);
+  const [shaking, setShaking] = useState(false);
+  const dotsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (sessionStorage.getItem(SESSION_KEY) === "1") {
+      setUnlocked(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (pin.length === 4) {
+      if (pin === CORRECT_PIN) {
+        sessionStorage.setItem(SESSION_KEY, "1");
+        setUnlocked(true);
+      } else {
+        setShaking(true);
+        setError(true);
+        setTimeout(() => {
+          setPin("");
+          setShaking(false);
+          setError(false);
+        }, 600);
+      }
+    }
+  }, [pin]);
+
+  function pressKey(key: string) {
+    if (pin.length < 4) setPin((p) => p + key);
+  }
+
+  function deleteKey() {
+    setPin((p) => p.slice(0, -1));
+  }
+
+  if (unlocked) return <>{children}</>;
+
+  const PAD = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-espresso select-none">
+      <div
+        className="absolute inset-0 opacity-30"
+        style={{
+          backgroundImage:
+            "radial-gradient(ellipse at 30% 20%, #b8643f 0%, transparent 55%), radial-gradient(ellipse at 70% 80%, #426b50 0%, transparent 55%)"
+        }}
+      />
+
+      <div className="relative flex flex-col items-center gap-10 px-6">
+        <div className="flex flex-col items-center gap-4 text-white">
+          <div className="grid h-16 w-16 place-items-center rounded-2xl bg-white/12 backdrop-blur">
+            <Lock size={30} className="text-white" />
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-semibold">이탈리아 여행</p>
+            <p className="mt-1 text-sm text-white/60">비밀번호를 입력하세요</p>
+          </div>
+        </div>
+
+        <div ref={dotsRef} className={`flex gap-5 ${shaking ? "shake" : ""}`}>
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className={`h-4 w-4 rounded-full border-2 transition-all duration-150 ${
+                i < pin.length
+                  ? error
+                    ? "border-red-400 bg-red-400"
+                    : "border-limone bg-limone"
+                  : "border-white/40 bg-transparent"
+              }`}
+            />
+          ))}
+        </div>
+
+        {error && (
+          <p className="absolute -bottom-6 text-sm text-red-400">비밀번호가 틀렸습니다</p>
+        )}
+
+        <div className="grid grid-cols-3 gap-3">
+          {PAD.map((key, idx) => {
+            if (key === "") return <div key={idx} />;
+            if (key === "del") {
+              return (
+                <button
+                  key="del"
+                  type="button"
+                  onClick={deleteKey}
+                  className="grid h-16 w-16 place-items-center rounded-2xl bg-white/10 text-white/70 transition active:bg-white/20"
+                >
+                  <Delete size={22} />
+                </button>
+              );
+            }
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => pressKey(key)}
+                className="grid h-16 w-16 place-items-center rounded-2xl bg-white/10 text-xl font-semibold text-white transition active:bg-terracotta"
+              >
+                {key}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const statusTone = {
   확정: "bg-basil text-white",
@@ -40,6 +159,7 @@ export default function Home() {
   );
 
   return (
+    <PasswordGate>
     <main className="min-h-screen bg-marble text-ink">
       <section className="relative min-h-[560px] overflow-hidden bg-espresso text-white">
         <Image
@@ -298,6 +418,7 @@ export default function Home() {
         </aside>
       </section>
     </main>
+    </PasswordGate>
   );
 }
 
